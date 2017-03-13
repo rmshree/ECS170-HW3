@@ -23,21 +23,64 @@ public class Gender {
             System.out.println("Epoch\tTraining Accuracy");
             train(data);
             System.out.println();
-        }
-        else if (args[0].equals("-test")) {
+        } else if (args[0].equals("-test")) {
             loadData(data, args[1], -1);
             System.out.println("Testing Neural Network...");
             test(data);
+        } else if (args[0].equals("-validate")) {
+            loadData(data, args[1] + "Male/", 1);
+            loadData(data, args[1] + "Female/", 0);
+            crossValidate(data);
         }
     }
+
+    private static void crossValidate(ArrayList<Matrix> data) {
+
+        ArrayList<Double> accuracyList = new ArrayList<Double>();
+        for (int i = 0; i < 10; i++) {
+            Collections.shuffle(data);
+            ArrayList<Matrix> randomFold = new ArrayList<Matrix>();
+            ArrayList<Matrix> testData = new ArrayList<Matrix>();
+            for (int j = 0; j < data.size() / 5; j++) {
+                randomFold.add(data.get(j));
+            }
+            for (int j = data.size() / 5; j < data.size(); j++) {
+                testData.add(data.get(j));
+            }
+//                System.out.println("testing next fold");
+            train(randomFold);
+            double score =test(testData);
+            accuracyList.add(score);
+            System.out.print("accuracy: ");
+            System.out.println(score);
+        }
+        double overallAccuracy = 0;
+        for (double score : accuracyList) {
+
+            overallAccuracy += score;
+        }
+        System.out.print("Overall accuracy: ");
+        System.out.println(overallAccuracy / accuracyList.size());
+    }
+
 
     private static void train(ArrayList<Matrix> data) {
         NeuralNetwork NN = new NeuralNetwork();
         Collections.shuffle(data);
         double error = 0, prev_error = 0;
-        for (int i = 0; Math.abs(prev_error - error) > 0.0005 || i == 0; i++) {
-            //prev_error = error;
+        for (int i = 0; Math.abs(prev_error - error) > 0.00000005 || i == 0; i++) {
+            prev_error = error;
             double correct = 0;
+//            for(Matrix j : data) {
+//                NN.feed_forward(j);
+//            }
+//            NN.back_propagate();
+//            for(Matrix j : data) {
+//
+//                int predict = NN.predict() ? 1 : 0;
+//                if (predict == j.gender)
+//                    correct++;
+//            }
             for(Matrix j : data) {
                 NN.feed_forward(j);
                 NN.back_propagate();
@@ -76,9 +119,11 @@ public class Gender {
         }
     }
 
-    private static void test(ArrayList<Matrix> data) {
-        System.out.println("\ti\tname\t\tgender\terror\tconfidence");
+    private static double test(ArrayList<Matrix> data) {
+//        System.out.println("\ti\tname\t\tgender\terror\tconfidence");
         NeuralNetwork NN = null;
+
+        double accurary = 0;
         try {
             FileInputStream file_in = new FileInputStream("weights.txt");
             ObjectInputStream in = new ObjectInputStream(file_in);
@@ -96,8 +141,12 @@ public class Gender {
         for (int i = 0; i < data.size(); i++) {
             NeuralNetwork.OutputNode best = NN.test(data.get(i));
             double confidence = Math.pow(best.target - best.output, 2);
-            System.out.println("\t"+ i +"\t" + data.get(i).name + "\t" + best.gender + "\t" + NN.predict() + "\t"+ confidence);
+//            System.out.println("\t"+ i +"\t" + data.get(i).name + "\t" + best.gender + "\t" + NN.predict() + "\t"+ confidence);
+            if(best.gender == data.get(i).gender){
+                accurary++;
+            }
         }
+        return accurary/data.size();
     }
 }
 
@@ -120,10 +169,10 @@ class Matrix {
 
 class NeuralNetwork implements Serializable {
     int input_layer_size = Matrix.length * Matrix.width;
-    int hidden_layer_size = 15;
+    int hidden_layer_size = 10;
     int output_layer_size = 2;
     int num_hidden_layers = 1;
-    double learning_rate = 0.3;
+    double learning_rate = 0.2;
 
     InputNode[] input_layer;
     HiddenNode[][] hidden_layers;
@@ -232,15 +281,15 @@ class NeuralNetwork implements Serializable {
         for(int i = num_hidden_layers - 1; i > -1; i--) {
             for(int j = 0; j < hidden_layer_size; j++) {
                 double total = 0;
-                if(i != num_hidden_layers - 1) {
-                    for(int k = 0; k < hidden_layer_size; k++) {
-                        total += hidden_layers[i][j].weights[k] * hidden_layers[i + 1][k].error;
-                    }
-                } else {
+//                if(i != num_hidden_layers - 1) {
+//                    for(int k = 0; k < hidden_layer_size; k++) {
+//                        total += hidden_layers[i][j].weights[k] * hidden_layers[i + 1][k].error;
+//                    }
+//                } else {
                     for(int k = 0; k < output_layer_size; k++) {
                         total += hidden_layers[i][j].weights[k] * output_layer[k].error;
                     }
-                }
+//                }
                 hidden_layers[i][j].error = total;
             }
         }
@@ -250,10 +299,10 @@ class NeuralNetwork implements Serializable {
                 input_layer[j].weights[i] += learning_rate * hidden_layers[0][i].error * input_layer[j].value;
 
         //hidden layer weights updated
-        for(int i = 0; i < num_hidden_layers - 1; i++)
-            for(int j = 0; j < hidden_layer_size; j++)
-                for(int k = 0; k < hidden_layer_size; k++)
-                    hidden_layers[i][k].weights[j] += learning_rate * hidden_layers[i + 1][j].error * hidden_layers[i][k].output;
+//        for(int i = 0; i < num_hidden_layers - 1; i++)
+//            for(int j = 0; j < hidden_layer_size; j++)
+//                for(int k = 0; k < hidden_layer_size; k++)
+//                    hidden_layers[i][k].weights[j] += learning_rate * hidden_layers[i + 1][j].error * hidden_layers[i][k].output;
 
         for(int i = 0; i < output_layer_size; i++)
             for(int j = 0; j < hidden_layer_size; j++)
