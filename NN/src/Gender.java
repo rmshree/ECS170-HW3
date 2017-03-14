@@ -36,31 +36,44 @@ public class Gender {
 
     private static void crossValidate(ArrayList<Matrix> data) {
 
-        ArrayList<Double> accuracyList = new ArrayList<Double>();
+        ArrayList<Double> accuracyListMain = new ArrayList<Double>();
         for (int i = 0; i < 10; i++) {
             Collections.shuffle(data);
-            ArrayList<Matrix> randomFold = new ArrayList<Matrix>();
-            ArrayList<Matrix> testData = new ArrayList<Matrix>();
-            for (int j = 0; j < data.size() / 5; j++) {
-                randomFold.add(data.get(j));
-            }
-            for (int j = data.size() / 5; j < data.size(); j++) {
-                testData.add(data.get(j));
-            }
+            ArrayList<Double> accuracyList = new ArrayList<Double>();
+            for(int k=0; k<5; k++) {
+                ArrayList<Matrix> randomFold = new ArrayList<Matrix>();
+                ArrayList<Matrix> testData = new ArrayList<Matrix>();
+                int start = k*(data.size()/5);
+                for (int j = start; j < start+(data.size() / 5); j++) {
+                    testData.add(data.get(j));
+                }
+                for (Matrix j : data) {
+                    if(!testData.contains(j)) {
+                        randomFold.add(j);
+                    }
+                }
 //                System.out.println("testing next fold");
-            train(randomFold);
-            double score =test(testData);
-            accuracyList.add(score);
-            System.out.print("accuracy: ");
-            System.out.println(score);
+                train(randomFold);
+                double score = test(testData);
+                accuracyList.add(score);
+                accuracyListMain.add(score);
+            }
+            double overallAccuracy = 0;
+            for (double score : accuracyList) {
+                overallAccuracy += score;
+            }
+            System.out.print("mean fold accuracy: ");
+            System.out.println(overallAccuracy / accuracyList.size());
+            System.out.print("Standard deviation of fold accuracy: ");
+            System.out.println(standardDeviation(accuracyList,overallAccuracy / accuracyList.size()));
         }
         double overallAccuracy = 0;
-        for (double score : accuracyList) {
-
+        for (double score : accuracyListMain) {
             overallAccuracy += score;
         }
         System.out.print("Overall accuracy: ");
-        System.out.println(overallAccuracy / accuracyList.size());
+        System.out.println(overallAccuracy / accuracyListMain.size());
+
     }
 
 
@@ -90,7 +103,7 @@ public class Gender {
             }
             error = 1 - (correct / data.size());
             double accuracy = correct / data.size();
-            System.out.println(i + "\t" + accuracy);
+//            System.out.println(i + "\t" + accuracy);
         }
 
         try {
@@ -119,6 +132,15 @@ public class Gender {
         }
     }
 
+    private static double standardDeviation(ArrayList<Double> confidenceList, double mean){
+        double variance = 0;
+        for(double x : confidenceList){
+            variance+= (x-mean)*(x-mean);
+        }
+        variance = variance/confidenceList.size();
+        return Math.sqrt(variance);
+    }
+
     private static double test(ArrayList<Matrix> data) {
 //        System.out.println("\ti\tname\t\tgender\terror\tconfidence");
         NeuralNetwork NN = null;
@@ -138,14 +160,22 @@ public class Gender {
             c.printStackTrace();
             System.exit(6);
         }
+        double meanConfidence = 0;
+        ArrayList<Double> confidenceList = new ArrayList<Double>();
         for (int i = 0; i < data.size(); i++) {
             NeuralNetwork.OutputNode best = NN.test(data.get(i));
             double confidence = Math.pow(best.target - best.output, 2);
+            meanConfidence+=confidence;
+            confidenceList.add(confidence);
 //            System.out.println("\t"+ i +"\t" + data.get(i).name + "\t" + best.gender + "\t" + NN.predict() + "\t"+ confidence);
             if(best.gender == data.get(i).gender){
                 accurary++;
             }
         }
+//        System.out.print("Mean confidence: ");
+//        System.out.println(meanConfidence/data.size());
+//        System.out.print("Standard Deviation of confidence: ");
+//        System.out.println(standardDeviation(confidenceList, meanConfidence/data.size()));
         return accurary/data.size();
     }
 }
