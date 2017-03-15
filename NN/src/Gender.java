@@ -17,8 +17,8 @@ public class Gender {
         ArrayList<Matrix> data = new ArrayList<Matrix>();
 
         if (args[0].equals("-train")) {
-            loadData(data, args[1] + "Male/", 1);
-            loadData(data, args[1] + "Female/", 0);
+            loadData(data, args[1], 1);
+            loadData(data, args[2], 0);
             System.out.println("Training Neural Network...");
             System.out.println("Epoch\tTraining Accuracy");
             train(data);
@@ -162,16 +162,36 @@ public class Gender {
         }
         double meanConfidence = 0;
         ArrayList<Double> confidenceList = new ArrayList<Double>();
+        ArrayList<Integer> genderList = new ArrayList<Integer>();
         for (int i = 0; i < data.size(); i++) {
             NeuralNetwork.OutputNode best = NN.test(data.get(i));
             double confidence = Math.pow(best.target - best.output, 2);
             meanConfidence+=confidence;
             confidenceList.add(confidence);
-//            System.out.println("\t"+ i +"\t" + data.get(i).name + "\t" + best.gender + "\t" + NN.predict() + "\t"+ confidence);
+            genderList.add(best.gender);
+            System.out.println("\t"+ i +"\t" + data.get(i).name + "\t" + best.gender + "\t" + NN.predict() + "\t"+ confidence);
             if(best.gender == data.get(i).gender){
                 accurary++;
             }
         }
+        try {
+            PrintWriter out = new PrintWriter("test_out.txt");
+            for(int i=0; i<confidenceList.size(); i++){
+                if(genderList.get(i) == 1){
+                    out.write("Male ");
+                }else{
+                    out.write("Female ");
+                }
+                out.write(Double.toString(confidenceList.get(i)));
+                out.write("\n");
+
+            }
+            out.close();
+        } catch (IOException i) {
+            i.printStackTrace();
+            System.exit(5);
+        }
+
 //        System.out.print("Mean confidence: ");
 //        System.out.println(meanConfidence/data.size());
 //        System.out.print("Standard Deviation of confidence: ");
